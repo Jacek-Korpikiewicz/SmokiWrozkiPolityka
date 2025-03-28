@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Interactive Political Chart</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        #chart {
+            width: 400px;
+            height: 400px;
+            margin: 20px auto;
+            position: relative;
+            border: 2px solid black;
+            background: 
+                linear-gradient(to right, rgba(255,0,0,0.7) 50%, rgba(0,0,255,0.7) 50%),
+                linear-gradient(to right, rgba(0,128,0,0.7) 50%, rgba(128,0,128,0.7) 50%);
+            background-size: 100% 50%;
+            background-position: top, bottom;
+            background-repeat: no-repeat;
+        }
+        .axis {
+            position: absolute;
+            background-color: black;
+        }
+        #axisX { width: 100%; height: 2px; top: 50%; left: 0; }
+        #axisY { height: 100%; width: 2px; left: 50%; top: 0; }
+        .quadrant-label {
+            position: absolute;
+            font-size: 12px;
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px black;
+        }
+        .dot {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: black;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .dot-label {
+            position: absolute;
+            font-size: 10px;
+            transform: translate(-50%, -130%);
+            white-space: nowrap;
+            color: black;
+        }
+        table { margin: 20px auto; border-collapse: collapse; }
+        th, td { border: 1px solid black; padding: 5px 10px; }
+        tr.selected { background-color: #ddd; }
+    </style>
+</head>
+<body>
+    <h2>Interactive Political Chart</h2>
+    <div id="chart">
+        <div id="axisX" class="axis"></div>
+        <div id="axisY" class="axis"></div>
+        <div class="quadrant-label" style="top: 5px; left: 5px;">Authoritarian Left</div>
+        <div class="quadrant-label" style="top: 5px; right: 5px;">Authoritarian Right</div>
+        <div class="quadrant-label" style="bottom: 5px; left: 5px;">Libertarian Left</div>
+        <div class="quadrant-label" style="bottom: 5px; right: 5px;">Libertarian Right</div>
+    </div>
+
+    <table id="dataTable">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>X coord</th>
+                <th>Y coord</th>
+                <th>Ideology</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>Alan</td><td></td><td></td><td></td></tr>
+            <tr><td>Cziker</td><td></td><td></td><td></td></tr>
+            <tr><td>Dominik</td><td></td><td></td><td></td></tr>
+            <tr><td>Emel</td><td></td><td></td><td></td></tr>
+            <tr><td>FraKom</td><td></td><td></td><td></td></tr>
+            <tr><td>Hawaj</td><td></td><td></td><td></td></tr>
+            <tr><td>Jacek</td><td></td><td></td><td></td></tr>
+            <tr><td>Jaszczu</td><td></td><td></td><td></td></tr>
+            <tr><td>Jędrek M.</td><td></td><td></td><td></td></tr>
+            <tr><td>Kacper K.</td><td></td><td></td><td></td></tr>
+            <tr><td>Loczek</td><td></td><td></td><td></td></tr>
+            <tr><td>Michał K.</td><td></td><td></td><td></td></tr>
+            <tr><td>Monkas</td><td></td><td></td><td></td></tr>
+            <tr><td>Skisły</td><td></td><td></td><td></td></tr>
+            <tr><td>Skura</td><td></td><td></td><td></td></tr>
+            <tr><td>Sodek</td><td></td><td></td><td></td></tr>
+            <tr><td>Tutajec</td><td></td><td></td><td></td></tr>
+            <tr><td>Xerk</td><td></td><td></td><td></td></tr>
+        </tbody>
+    </table>
+
+    <script>
+        const chart = document.getElementById('chart');
+        const table = document.getElementById('dataTable');
+        let selectedRow = null;
+
+        table.addEventListener('click', function(e) {
+            if (e.target.tagName === 'TD') {
+                if (selectedRow) selectedRow.classList.remove('selected');
+                selectedRow = e.target.parentElement;
+                selectedRow.classList.add('selected');
+            }
+        });
+
+        chart.addEventListener('click', function(event) {
+            if (!selectedRow) {
+                alert('Please select a name from the table first.');
+                return;
+            }
+
+            const rect = chart.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            const xValue = ((x / rect.width) * 20 - 10).toFixed(2);
+            const yValue = (10 - (y / rect.height) * 20).toFixed(2);
+
+            selectedRow.cells[1].textContent = xValue;
+            selectedRow.cells[2].textContent = yValue;
+
+            const ideology = (xValue >= 0 ? 'Right' : 'Left') + ', ' + (yValue >= 0 ? 'Authoritarian' : 'Libertarian');
+            selectedRow.cells[3].textContent = ideology;
+
+            updateDots();
+
+            const payload = {
+                timestamp: new Date().toISOString(),
+                name: selectedRow.cells[0].textContent,
+                x: xValue,
+                y: yValue,
+                ideology: ideology
+            };
+
+            fetch('https://script.google.com/macros/s/AKfycbwrmTlBBZqjgCb6b2Ep2VA8G5-Tl_qBTfOC9TNu1mLAXFSkR5hf9GltVgvXTjJ1EXE4lA/exec', {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            }).then(() => console.log('Data logged', payload)).catch(err => console.error('Error:', err));
+        });
+
+        function updateDots() {
+            chart.querySelectorAll('.dot, .dot-label').forEach(el => el.remove());
+            Array.from(table.rows).slice(1).forEach(row => {
+                const xCoord = parseFloat(row.cells[1].textContent);
+                const yCoord = parseFloat(row.cells[2].textContent);
+                if (isNaN(xCoord) || isNaN(yCoord)) return;
+
+                const dot = document.createElement('div');
+                dot.classList.add('dot');
+                dot.style.left = `${((xCoord + 10) / 20) * 100}%`;
+                dot.style.top = `${((10 - yCoord) / 20) * 100}%`;
+
+                const label = document.createElement('div');
+                label.classList.add('dot-label');
+                label.textContent = row.cells[0].textContent;
+                label.style.left = dot.style.left;
+                label.style.top = dot.style.top;
+
+                chart.appendChild(dot);
+                chart.appendChild(label);
+            });
+        }
+    </script>
+</body>
+</html>
