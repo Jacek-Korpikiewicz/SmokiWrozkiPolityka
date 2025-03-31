@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Interactive Political Chart</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; }
+        #chart {
+            width: 400px;
+            height: 400px;
+            margin: 20px auto;
+            position: relative;
+            border: 2px solid black;
+            background:
+                linear-gradient(to right, rgba(255,0,0,0.2) 50%, rgba(0,0,255,0.2) 50%),
+                linear-gradient(to right, rgba(0,128,0,0.2) 50%, rgba(128,0,128,0.2) 50%);
+            background-size: 100% 50%;
+            background-position: top, bottom;
+            background-repeat: no-repeat;
+        }
+        .axis {
+            position: absolute;
+            background-color: black;
+        }
+        #axisX { width: 100%; height: 2px; top: 50%; left: 0; }
+        #axisY { height: 100%; width: 2px; left: 50%; top: 0; }
+        .quadrant-label {
+            position: absolute;
+            font-size: 12px;
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px black;
+            z-index: 2;
+        }
+        .dot {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background-color: black;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 3;
+        }
+        .dot-label {
+            position: absolute;
+            font-size: 10px;
+            transform: translate(-50%, -130%);
+            white-space: nowrap;
+            color: black;
+            z-index: 3;
+        }
+        .quadrant-bg {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            opacity: 0.25;
+            background-size: cover;
+            background-position: center;
+            z-index: 0;
+        }
+        #authoritarian-left { top: 0; left: 0; background-image: url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR1Psu6YRJ3Vzn_SIFSu-_OXk1du8zxoNEzZg&s'); }
+        #authoritarian-right { top: 0; right: 0; background-image: url('https://img.wprost.pl/img/kraza-plotki-o-morawieckim-ziobro-nie-bedzie-zadowolony/c4/a4/a564c6fb19ece8762efff84dc546.webp'); }
+        #libertarian-left { bottom: 0; left: 0; background-image: url('https://tse1.mm.bing.net/th?id=OIP.QuNw3j1Fi_BUh8-Lk8RvpQHaLH&pid=Api'); }
+        #libertarian-right { bottom: 0; right: 0; background-image: url('https://tse3.mm.bing.net/th?id=OIP.xJVKHBR0yQMXzvvielKsEAHaHa&pid=Api'); }
+        #centrist {
+            position: absolute;
+            top: 35%;
+            left: 35%;
+            width: 30%;
+            height: 30%;
+            opacity: 0.4;
+            background-size: cover;
+            background-position: center;
+            background-image: url('https://tse2.mm.bing.net/th?id=OIP.enokrkB16e9dAsEhz8UbjQHaLN&pid=Api');
+            z-index: 0;
+        }
+        #centrist-label {
+            position: absolute;
+            top: 48%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 14px;
+            font-weight: bold;
+            color: black;
+            z-index: 2;
+        }
+        table { margin: 20px auto; border-collapse: collapse; }
+        th, td { border: 1px solid black; padding: 5px 10px; }
+        tr.selected { background-color: #ddd; }
+    </style>
+</head>
+<body>
+    <h2>Unban Vote</h2>
+    <form id="cardForm">
+        <div id="cardGrid"></div>
+        <button type="submit">Submit Votes</button>
+    </form>
+
+    <script>
+        const cardList = [
+            "Amped Raptor", "Ancient Den", "Arcum's Astrolabe", "Birthing Pod", "Blazing Shoal",
+            "Bridge From Below", "Chrome Mox", "Cloudpost", "Dark Depths", "Deathrite Shaman",
+            "Dig Through Time", "Dread Return", "Eye of Ugin", "Field of the Dead", "Fury",
+            "Gitaxian Probe", "Glimpse of Nature", "Golgari Grave-Troll", "Great Furnace", "Grief",
+            "Hogaak, Arisen Necropolis", "Hypergenesis", "Jegantha, the Wellspring", "Krark-Clan Ironworks",
+            "Lurrus of the Dream-Den", "Mental Misstep", "Mycosynth Lattice", "Mystic Sanctuary",
+            "Nadu, Winged Wisdom", "Oko, Thief of Crowns", "Once Upon a Time", "Ponder", "Punishing Fire",
+            "Rite of Flame", "Seat of the Synod", "Second Sunrise", "Seething Song", "Sensei's Divining Top",
+            "Simian Spirit Guide", "Skullclamp", "Summer Bloom", "The One Ring", "Tibalt's Trickery",
+            "Treasure Cruise", "Tree of Tales", "Umezawa's Jitte", "Up the Beanstalk",
+            "Uro, Titan of Nature's Wrath", "Vault of Whispers", "Violent Outburst", "Yorion, Sky Nomad"
+        ];
+
+        const grid = document.getElementById("cardGrid");
+
+        cardList.forEach(card => {
+            const div = document.createElement("div");
+            div.className = "cardName";
+            div.textContent = card;
+            div.dataset.card = card;
+            div.dataset.unban = "false";
+            div.addEventListener("click", () => {
+                const unbanned = div.dataset.unban === "true";
+                div.dataset.unban = (!unbanned).toString();
+                div.classList.toggle("unbanned", !unbanned);
+            });
+            grid.appendChild(div);
+        });
+
+        document.getElementById("cardForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+
+            const votes = {};
+            document.querySelectorAll(".cardName").forEach(div => {
+                votes[div.dataset.card] = div.dataset.unban === "true" ? "Yes" : "No";
+            });
+
+            const payload = {
+                timestamp: new Date().toISOString(),
+                responses: votes
+            };
+
+            fetch("https://script.google.com/macros/s/AKfycbwrmTlBBZqjgCb6b2Ep2VA8G5-Tl_qBTfOC9TNu1mLAXFSkR5hf9GltVgvXTjJ1EXE4lA/exec", {
+    method: "POST",
+    mode: "no-cors", // Important: this avoids CORS issues
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+})
+.then(() => {
+                alert("Votes submitted! Thank you.");
+            }).catch(err => {
+                console.error("Submission error:", err);
+                alert("Something went wrong!");
+            });
+        });
+    </script>
+
+    <style>
+        #cardGrid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            max-width: 1000px;
+            margin: 20px auto;
+        }
+
+        .cardName {
+            padding: 10px;
+            text-align: center;
+            background-color: #f44336; /* red */
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.2s ease;
+            user-select: none;
+        }
+
+        .cardName.unbanned {
+            background-color: #4CAF50; /* green */
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+</body>
+
+</html>
